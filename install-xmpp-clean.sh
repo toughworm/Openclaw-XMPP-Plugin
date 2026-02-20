@@ -16,21 +16,22 @@ fi
 
 echo "[xmpp] Using OpenClaw CLI: $OPENCLAW_BIN"
 
-# Detect existing xmpp plugin (any origin: path, archive, npm)
+# Detect existing xmpp plugin and perform manual cleanup
 if "$OPENCLAW_BIN" plugins info xmpp --json >/dev/null 2>&1; then
-  echo "[xmpp] Detected existing xmpp plugin installation; uninstalling old version..."
-  # This will:
-  # - remove plugins.entries["xmpp"] from openclaw.json
-  # - remove plugins.installs["xmpp"] and related metadata
-  # - delete the installed plugin directory under the extensions state dir
-  # - clean allowlist/load-path/slot if needed
-  "$OPENCLAW_BIN" plugins uninstall xmpp --force || true
+  echo "[xmpp] Detected existing xmpp plugin; cleaning config and files..."
+
+  # Remove config records for xmpp plugin (do not touch channels.xmpp)
+  "$OPENCLAW_BIN" config unset plugins.entries.xmpp || true
+  "$OPENCLAW_BIN" config unset plugins.installs.xmpp || true
+
+  # Remove default extensions directory for xmpp plugin
+  rm -rf "$HOME/.openclaw/extensions/xmpp" || true
 else
-  echo "[xmpp] No existing xmpp plugin found in plugin registry; skipping uninstall step."
+  echo "[xmpp] No existing xmpp plugin found; skipping cleanup."
 fi
 
-echo "[xmpp] Installing latest @openclaw/xmpp plugin via npm spec..."
-"$OPENCLAW_BIN" plugins install @openclaw/xmpp
+ARCHIVE_URL="https://github.com/toughworm/Openclaw-XMPP-Plugin/archive/refs/heads/main.zip"
+echo "[xmpp] Installing xmpp plugin from: $ARCHIVE_URL"
+"$OPENCLAW_BIN" plugins install "$ARCHIVE_URL"
 
 echo "[xmpp] Done. Restart the OpenClaw gateway to load the updated XMPP plugin."
-
