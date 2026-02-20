@@ -42,7 +42,7 @@ async function promptXmppCredentials(params: {
   ).trim();
 
   const password = String(
-    await params.prompter.password({
+    await params.prompter.text({
       message: "XMPP password",
       validate: (value) => {
         const raw = String(value ?? "").trim();
