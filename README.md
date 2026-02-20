@@ -38,10 +38,10 @@ openclaw plugins install ./extensions/xmpp
 如果你之前安装过旧版 XMPP 插件，再次安装可能会因为旧的插件记录而失败。  
 If you have an older XMPP plugin installed, a fresh install may fail due to stale plugin records.
 
-发布到 GitHub 后，可以使用 curl 一键运行清理+安装脚本（示例）：
+发布到 GitHub 后，可以使用 curl 一键运行清理+安装脚本（LINUX示例）：
 
 ```bash
-curl -fsSL https://github.com/toughworm/Openclaw-XMPP-Plugin/blob/main/install-xmpp-clean.sh | bash
+curl -fsSL https://raw.githubusercontent.com/toughworm/Openclaw-XMPP-Plugin/refs/heads/main/install-xmpp-clean.sh | bash
 ```
 
 脚本行为：
