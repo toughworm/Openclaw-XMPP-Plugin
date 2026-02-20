@@ -1,6 +1,5 @@
 import {
   buildChannelConfigSchema,
-  collectStatusIssuesFromLastError,
   createReplyPrefixOptions,
   DEFAULT_ACCOUNT_ID,
   deleteAccountFromConfigSection,
@@ -8,6 +7,7 @@ import {
   resolveChannelMediaMaxBytes,
   setAccountEnabledInConfigSection,
   type ChannelPlugin,
+  type ChannelStatusIssue,
 } from "openclaw/plugin-sdk";
 import {
   listXmppAccountIds,
@@ -588,7 +588,26 @@ export const xmppPlugin: ChannelPlugin<ResolvedXmppAccount> = {
   },
   status: {
     defaultRuntime: createXmppRuntimeState(DEFAULT_ACCOUNT_ID),
-    collectStatusIssues: (accounts) => collectStatusIssuesFromLastError("xmpp", accounts),
+    collectStatusIssues: (accounts) => {
+      const issues: ChannelStatusIssue[] = [];
+      for (const account of accounts) {
+        const runtime = account.runtime as XmppRuntimeState | undefined;
+        if (!account.configured) {
+          issues.push({
+            level: "warning",
+            summary: `XMPP account "${account.accountId}" is not configured`,
+          });
+          continue;
+        }
+        if (!runtime?.running && runtime?.lastError) {
+          issues.push({
+            level: "error",
+            summary: `XMPP account "${account.accountId}" failed to start: ${runtime.lastError}`,
+          });
+        }
+      }
+      return issues;
+    },
     buildChannelSummary: ({ snapshot }) => ({
       configured: snapshot.configured ?? false,
       running: snapshot.running ?? false,

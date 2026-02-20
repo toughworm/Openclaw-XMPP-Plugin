@@ -17,6 +17,7 @@ export type ResolvedXmppAccount = {
   tls: boolean;
   tlsMode: XmppTlsMode;
   allowSelfSignedTls: boolean;
+  omemoEnabled?: boolean;
   config: XmppAccountConfig;
 };
 
@@ -150,6 +151,7 @@ export function resolveXmppAccount(params: {
       tls,
       tlsMode,
       allowSelfSignedTls,
+      omemoEnabled: merged.omemoEnabled ?? false,
       config,
     };
   };
