@@ -24,13 +24,9 @@ ARCHIVE_URL="https://github.com/toughworm/Openclaw-XMPP-Plugin/archive/refs/head
 ARCHIVE_PATH="$TMP_DIR/openclaw-xmpp-plugin-main.zip"
 BACKUP_PATH="$TMP_DIR/xmpp-channels-backup.json"
 
-# Detect existing xmpp plugin and perform manual cleanup
-if "$OPENCLAW_BIN" plugins info xmpp --json >/dev/null 2>&1; then
-  echo "[xmpp] Detected existing xmpp plugin; backing up channels.xmpp and cleaning old plugin..."
-
-  # Backup channels.xmpp subtree (if present) to a temp file
-  if [ -f "$CONFIG_PATH" ]; then
-    python3 - "$CONFIG_PATH" "$BACKUP_PATH" << 'PY'
+# Backup channels.xmpp subtree (if present) to a temp file
+if [ -f "$CONFIG_PATH" ]; then
+  python3 - "$CONFIG_PATH" "$BACKUP_PATH" << 'PY'
 import json, sys, os
 
 config_path, backup_path = sys.argv[1], sys.argv[2]
@@ -49,22 +45,21 @@ os.makedirs(os.path.dirname(backup_path), exist_ok=True)
 with open(backup_path, "w", encoding="utf-8") as f:
     json.dump(xmpp_cfg, f)
 PY
-  fi
-
-  # Remove channel config to avoid "unknown channel id: xmpp" during install
-  "$OPENCLAW_BIN" config unset channels.xmpp || true
-
-  # Remove plugin entry so config no longer references old xmpp plugin id
-  "$OPENCLAW_BIN" config unset plugins.entries.xmpp || true
-
-  # Remove install record so a fresh install can be recorded
-  "$OPENCLAW_BIN" config unset plugins.installs.xmpp || true
-
-  # Remove default extensions directory for xmpp plugin
-  rm -rf "$HOME/.openclaw/extensions/xmpp" || true
-else
-  echo "[xmpp] No existing xmpp plugin found; skipping cleanup."
 fi
+
+echo "[xmpp] Cleaning old xmpp plugin config and files (if any)..."
+
+# Remove channel config to avoid "unknown channel id: xmpp" during install
+"$OPENCLAW_BIN" config unset channels.xmpp || true
+
+# Remove plugin entry so config no longer references old xmpp plugin id
+"$OPENCLAW_BIN" config unset plugins.entries.xmpp || true
+
+# Remove install record so a fresh install can be recorded
+"$OPENCLAW_BIN" config unset plugins.installs.xmpp || true
+
+# Remove default extensions directory for xmpp plugin
+rm -rf "$HOME/.openclaw/extensions/xmpp" || true
 
 echo "[xmpp] Downloading xmpp plugin archive to: $ARCHIVE_PATH"
 curl -fsSL "$ARCHIVE_URL" -o "$ARCHIVE_PATH"
