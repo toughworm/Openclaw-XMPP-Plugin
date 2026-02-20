@@ -20,15 +20,12 @@ echo "[xmpp] Using OpenClaw CLI: $OPENCLAW_BIN"
 
 # Detect existing xmpp plugin and perform manual cleanup
 if "$OPENCLAW_BIN" plugins info xmpp --json >/dev/null 2>&1; then
-  echo "[xmpp] Detected existing xmpp plugin; cleaning config and files..."
+  echo "[xmpp] Detected existing xmpp plugin; cleaning plugin registry and files (preserving channels.xmpp config)..."
 
-  # 1) Remove channel config first to avoid unknown channel id when plugin is absent
-  "$OPENCLAW_BIN" config unset channels.xmpp || true
-
-  # 2) Remove plugin entry so config no longer references xmpp plugin id
+  # Remove plugin entry so config no longer references old xmpp plugin id
   "$OPENCLAW_BIN" config unset plugins.entries.xmpp || true
 
-  # 3) Finally remove install record (after entries is gone) to keep config valid
+  # Remove install record so a fresh install can be recorded
   "$OPENCLAW_BIN" config unset plugins.installs.xmpp || true
 
   # Remove default extensions directory for xmpp plugin

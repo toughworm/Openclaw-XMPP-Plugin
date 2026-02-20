@@ -61,18 +61,35 @@ export function getXmppRuntime(): any {
       // Fallback to PluginRuntime
       if (_pluginRuntime && prop in _pluginRuntime) {
         const value = Reflect.get(_pluginRuntime, prop, receiver);
-        // Note: we don't bind pluginRuntime methods because they might not need it,
-        // or they might rely on `this` context being correct from where they are called.
-        // But usually PluginRuntime methods are standalone functions or object methods.
         return value;
       }
 
       // Compatibility for legacy calls in channel.ts
       if (prop === "log") {
-        return (msg: string) => _pluginRuntime?.logger.info(msg);
+        return (msg: string) => {
+          const rt = _pluginRuntime as any;
+          if (rt?.logger?.info) {
+            rt.logger.info(msg);
+          } else if (rt?.log?.info) {
+            rt.log.info(msg);
+          } else {
+            // Best-effort fallback
+            console.log(msg);
+          }
+        };
       }
       if (prop === "error") {
-        return (msg: string) => _pluginRuntime?.logger.error(msg);
+        return (msg: string) => {
+          const rt = _pluginRuntime as any;
+          if (rt?.logger?.error) {
+            rt.logger.error(msg);
+          } else if (rt?.log?.error) {
+            rt.log.error(msg);
+          } else {
+            // Best-effort fallback
+            console.error(msg);
+          }
+        };
       }
 
       return undefined;
