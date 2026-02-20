@@ -47,19 +47,6 @@ curl -fsSL "$ARCHIVE_URL" -o "$ARCHIVE_PATH"
 echo "[xmpp] Installing xmpp plugin from local archive: $ARCHIVE_PATH"
 "$OPENCLAW_BIN" plugins install "$ARCHIVE_PATH"
 
-BIN_DIR="$(dirname "$OPENCLAW_BIN")"
-PREFIX_DIR="$(dirname "$BIN_DIR")"
-OPENCLAW_ROOT="$PREFIX_DIR/lib/node_modules/openclaw"
-if [ -d "$OPENCLAW_ROOT" ] && command -v npm >/dev/null 2>&1; then
-  echo "[xmpp] Installing global npm dependencies in $OPENCLAW_ROOT..."
-  cd "$OPENCLAW_ROOT"
-  npm install \
-    @xmpp/client@0.13.1 \
-    @privacyresearch/libsignal-protocol-typescript@0.0.16 \
-    ws@7.5.9 \
-    zod@4.3.6 --save
-fi
-
 XMPP_DIR="$HOME/.openclaw/extensions/xmpp"
 if [ -d "$XMPP_DIR" ]; then
   if command -v npm >/dev/null 2>&1; then
