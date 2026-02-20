@@ -41,7 +41,7 @@ If you have an older XMPP plugin installed, a fresh install may fail due to stal
 发布到 GitHub 后，可以使用 curl 一键运行清理+安装脚本（LINUX示例）：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/toughworm/Openclaw-XMPP-Plugin/refs/heads/main/install-xmpp-clean.sh | bash
+curl -fsSL https://raw.githubusercontent.com/toughworm/Openclaw-XMPP-Plugin/main/install-xmpp-clean.sh | bash
 ```
 
 脚本行为：
