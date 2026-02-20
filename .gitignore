@@ -1,0 +1,15 @@
+# Local OMEMO / test key stores (do not commit)
+store-test*.json
+test-store*.json
+
+# Local test scripts (OMeMo experiments, not needed on GitHub)
+test-omemo-*.ts
+
+# Common OS/editor noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Local node modules (in case of standalone use)
+node_modules/

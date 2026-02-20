@@ -1,0 +1,10 @@
+# Exclude local OMEMO/test key stores from published package
+store-test*.json
+test-store*.json
+
+# Do not publish local install helper by default (can be fetched from GitHub)
+install-xmpp-clean.sh
+
+# TypeScript test scripts (kept in repo, not needed in npm tarball)
+test-*.ts
+
