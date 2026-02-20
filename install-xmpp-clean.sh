@@ -24,8 +24,9 @@ ARCHIVE_URL="https://github.com/toughworm/Openclaw-XMPP-Plugin/archive/refs/head
 ARCHIVE_PATH="$TMP_DIR/openclaw-xmpp-plugin-main.zip"
 BACKUP_PATH="$TMP_DIR/xmpp-channels-backup.json"
 
-# Backup channels.xmpp subtree (if present) to a temp file
+# Backup channels.xmpp and remove old xmpp entries directly from config (even if config is currently invalid)
 if [ -f "$CONFIG_PATH" ]; then
+  echo "[xmpp] Backing up channels.xmpp and cleaning old xmpp entries from config..."
   python3 - "$CONFIG_PATH" "$BACKUP_PATH" << 'PY'
 import json, sys, os
 
@@ -34,29 +35,37 @@ try:
     with open(config_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 except Exception:
+    # If config can't be read, do nothing; installer will fail later with a clear error
     sys.exit(0)
 
 channels = data.get("channels") or {}
 xmpp_cfg = channels.get("xmpp")
-if xmpp_cfg is None:
-    sys.exit(0)
+if xmpp_cfg is not None:
+    os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+    with open(backup_path, "w", encoding="utf-8") as f:
+        json.dump(xmpp_cfg, f)
+    channels.pop("xmpp", None)
+    data["channels"] = channels
 
-os.makedirs(os.path.dirname(backup_path), exist_ok=True)
-with open(backup_path, "w", encoding="utf-8") as f:
-    json.dump(xmpp_cfg, f)
+plugins = data.get("plugins") or {}
+entries = plugins.get("entries") or {}
+if "xmpp" in entries:
+    entries.pop("xmpp", None)
+    plugins["entries"] = entries
+
+installs = plugins.get("installs") or {}
+if "xmpp" in installs:
+    installs.pop("xmpp", None)
+    plugins["installs"] = installs
+
+data["plugins"] = plugins
+
+with open(config_path, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
 PY
 fi
 
-echo "[xmpp] Cleaning old xmpp plugin config and files (if any)..."
-
-# Remove channel config to avoid "unknown channel id: xmpp" during install
-"$OPENCLAW_BIN" config unset channels.xmpp || true
-
-# Remove plugin entry so config no longer references old xmpp plugin id
-"$OPENCLAW_BIN" config unset plugins.entries.xmpp || true
-
-# Remove install record so a fresh install can be recorded
-"$OPENCLAW_BIN" config unset plugins.installs.xmpp || true
+echo "[xmpp] Cleaning old xmpp plugin files (if any)..."
 
 # Remove default extensions directory for xmpp plugin
 rm -rf "$HOME/.openclaw/extensions/xmpp" || true
