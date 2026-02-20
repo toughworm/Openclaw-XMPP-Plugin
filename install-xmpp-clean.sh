@@ -53,7 +53,11 @@ if [ -d "$XMPP_DIR" ]; then
   if command -v npm >/dev/null 2>&1; then
     echo "[xmpp] Installing npm dependencies in $XMPP_DIR..."
     cd "$XMPP_DIR"
-    npm install --omit=dev || npm install
+    npm install \
+      @xmpp/client@0.13.1 \
+      @privacyresearch/libsignal-protocol-typescript@0.0.16 \
+      ws@7.5.9 \
+      zod@4.3.6 --save
   else
     echo "[xmpp] WARNING: npm not found; please run 'npm install --omit=dev' in $XMPP_DIR manually." >&2
   fi
