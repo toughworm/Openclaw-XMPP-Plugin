@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[xmpp] Starting clean install helper for OpenClaw XMPP plugin"
+# Always run from $HOME to avoid deleting/using a non-existent cwd
+cd "$HOME" || cd /
 
-# Ensure we are not running inside the directory we are about to delete
-if [ "$(pwd)" = "$HOME/.openclaw/extensions/xmpp" ]; then
-  cd "$HOME" || cd /
-fi
+echo "[xmpp] Starting clean install helper for OpenClaw XMPP plugin"
 
 # Resolve OpenClaw CLI
 if command -v openclaw >/dev/null 2>&1; then
