@@ -48,4 +48,15 @@ curl -fsSL "$ARCHIVE_URL" -o "$ARCHIVE_PATH"
 echo "[xmpp] Installing xmpp plugin from local archive: $ARCHIVE_PATH"
 "$OPENCLAW_BIN" plugins install "$ARCHIVE_PATH"
 
+XMPP_DIR="$HOME/.openclaw/extensions/xmpp"
+if [ -d "$XMPP_DIR" ]; then
+  if command -v npm >/dev/null 2>&1; then
+    echo "[xmpp] Installing npm dependencies in $XMPP_DIR..."
+    cd "$XMPP_DIR"
+    npm install --omit=dev || npm install
+  else
+    echo "[xmpp] WARNING: npm not found; please run 'npm install --omit=dev' in $XMPP_DIR manually." >&2
+  fi
+fi
+
 echo "[xmpp] Done. Restart the OpenClaw gateway to load the updated XMPP plugin."
