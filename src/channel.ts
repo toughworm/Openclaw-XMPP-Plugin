@@ -42,6 +42,13 @@ type XmppRuntimeState = {
   lastOutboundAt: number | null;
 };
 
+function normalizeXmppJid(target: string): string {
+  return target
+    .trim()
+    .replace(/^xmpp:/i, "")
+    .trim();
+}
+
 const clients = new Map<string, XmppClient>();
 const runtimeByAccount = new Map<string, XmppRuntimeState>();
 
@@ -257,7 +264,7 @@ async function handleInboundMessage(
   if (chatStatesEnabled) {
     const client = await ensureClient(account);
     const chatStateType = msg.isGroup ? "groupchat" : "chat";
-    await client.sendChatState(peerId, "composing", chatStateType);
+    await client.sendChatState(normalizeXmppJid(peerId), "composing", chatStateType);
   }
 
   await core.channel.reply.dispatchReplyWithBufferedBlockDispatcher({
@@ -280,7 +287,8 @@ async function handleInboundMessage(
         const text = core.channel.text.convertMarkdownTables(textPayload ?? "", tableMode);
 
         const client = await ensureClient(account);
-        const to = peerId;
+        const rawTo = peerId;
+        const to = normalizeXmppJid(rawTo);
         const maxBytes = resolveChannelMediaMaxBytes({
           cfg,
           resolveChannelLimitMb: ({ cfg: innerCfg, accountId: innerAccountId }) =>
@@ -371,7 +379,7 @@ async function handleInboundMessage(
   if (chatStatesEnabled) {
     const client = await ensureClient(account);
     const chatStateType = msg.isGroup ? "groupchat" : "chat";
-    await client.sendChatState(peerId, "active", chatStateType);
+    await client.sendChatState(normalizeXmppJid(peerId), "active", chatStateType);
   }
 }
 
@@ -479,7 +487,7 @@ export const xmppPlugin: ChannelPlugin<ResolvedXmppAccount> = {
 
       const receiptsEnabled = account.config.receiptsEnabled ?? true;
 
-      const messageId = await client.sendMessage(to, formatted, {
+      const messageId = await client.sendMessage(normalizeXmppJid(to), formatted, {
         type: "chat",
         requestReceipt: receiptsEnabled,
       });
@@ -569,7 +577,7 @@ export const xmppPlugin: ChannelPlugin<ResolvedXmppAccount> = {
         body = `${body}\n\n${finalMediaUrl}`;
       }
 
-      const messageId = await client.sendMessage(to, body, {
+      const messageId = await client.sendMessage(normalizeXmppJid(to), body, {
         type: "chat",
         requestReceipt: receiptsEnabled,
         oobUrls,

@@ -178,25 +178,29 @@ export class XmppClient {
     const messageId = this.generateMessageId();
     const children: any[] = [];
     
+    const normalizedTo = to.replace(/^xmpp:/i, "").trim();
+    const [bareTo] = normalizedTo.split("/");
+    const fullTo = normalizedTo;
+
     // OMEMO Encryption
     let encryptedElement: any = null;
     if (this.account.omemoEnabled && this.omemoManager && options?.type !== "groupchat") {
          try {
              // 1. Fetch devices for recipient
              // Note: In a real app, we should cache this or use PEP updates
-             const devices = await this.omemoManager.fetchDeviceList(to);
+             const devices = await this.omemoManager.fetchDeviceList(bareTo);
              
              if (devices.length > 0) {
-                 const recipients = devices.map(id => ({ jid: to, deviceId: id }));
+                 const recipients = devices.map(id => ({ jid: bareTo, deviceId: id }));
                  
                  // TODO: Add other self devices
                  
                  const encryptionResult = await this.omemoManager.encryptMessage(recipients, body);
                  encryptedElement = await this.omemoManager.constructOmemoElement(encryptionResult);
                  
-                 runtime.log?.(`[${this.account.accountId}] OMEMO: Encrypted message for ${to} (${devices.length} devices)`);
+                 runtime.log?.(`[${this.account.accountId}] OMEMO: Encrypted message for ${bareTo} (${devices.length} devices)`);
              } else {
-                 runtime.log?.(`[${this.account.accountId}] OMEMO: No devices found for ${to}, falling back to plain text.`);
+                 runtime.log?.(`[${this.account.accountId}] OMEMO: No devices found for ${bareTo}, falling back to plain text.`);
              }
          } catch (e) {
              runtime.error?.(`[${this.account.accountId}] OMEMO Encryption Failed: ${e}`);
@@ -248,7 +252,7 @@ export class XmppClient {
       "message",
       {
         type: options?.type ?? "chat",
-        to,
+        to: fullTo,
         id: messageId,
       },
       ...children,
@@ -256,7 +260,7 @@ export class XmppClient {
 
     await this.xmpp.send(stanza);
     runtime.log?.(
-      `[${this.account.accountId}] xmpp: sent message id=${messageId} to=${to} type=${
+      `[${this.account.accountId}] xmpp: sent message id=${messageId} to=${fullTo} type=${
         options?.type ?? "chat"
       } body=${body.slice(0, 120)}`,
     );
