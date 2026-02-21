@@ -625,18 +625,21 @@ export const xmppPlugin: ChannelPlugin<ResolvedXmppAccount> = {
       lastInboundAt: snapshot.lastInboundAt ?? null,
       lastOutboundAt: snapshot.lastOutboundAt ?? null,
     }),
-    buildAccountSnapshot: ({ account, runtime }) => ({
-      accountId: account.accountId,
-      name: account.name,
-      enabled: account.enabled,
-      configured: account.configured,
-      running: runtime?.running ?? false,
-      lastStartAt: runtime?.lastStartAt ?? null,
-      lastStopAt: runtime?.lastStopAt ?? null,
-      lastError: runtime?.lastError ?? null,
-      lastInboundAt: runtime?.lastInboundAt ?? null,
-      lastOutboundAt: runtime?.lastOutboundAt ?? null,
-    }),
+    buildAccountSnapshot: ({ account }) => {
+      const runtime = getRuntimeState(account.accountId);
+      return {
+        accountId: account.accountId,
+        name: account.name,
+        enabled: account.enabled,
+        configured: account.configured,
+        running: runtime.running,
+        lastStartAt: runtime.lastStartAt,
+        lastStopAt: runtime.lastStopAt,
+        lastError: runtime.lastError,
+        lastInboundAt: runtime.lastInboundAt,
+        lastOutboundAt: runtime.lastOutboundAt,
+      };
+    },
   },
   gateway: {
     startAccount: async (ctx) => {
@@ -654,21 +657,28 @@ export const xmppPlugin: ChannelPlugin<ResolvedXmppAccount> = {
             removeEventListener?: (type: "abort", listener: () => void) => void;
           }
         | undefined;
-      if (abort) {
-        if (abort.aborted) {
-          await stopClient(account.accountId);
-          return;
-        }
-        const onAbort = () => {
-          void stopClient(account.accountId);
-          abort.removeEventListener?.("abort", onAbort);
-        };
-        abort.addEventListener?.("abort", onAbort);
-      }
+      const state = getRuntimeState(account.accountId);
+      ctx.setStatus({
+        accountId: account.accountId,
+        running: state.running,
+        lastStartAt: state.lastStartAt,
+        lastError: state.lastError,
+      });
 
-      return {
-        client,
-      };
+      if (abort) {
+        await new Promise<void>((resolve) => {
+          if (abort.aborted) {
+            resolve();
+            return;
+          }
+          const onAbort = () => {
+            resolve();
+            abort.removeEventListener?.("abort", onAbort);
+          };
+          abort.addEventListener?.("abort", onAbort);
+        });
+        await stopClient(account.accountId);
+      }
     },
   },
 };

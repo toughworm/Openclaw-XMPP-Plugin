@@ -1,14 +1,14 @@
 import { promises as fs } from "node:fs";
 import http from "node:http";
 import https from "node:https";
-import path from "node:path";
 import * as os from "node:os";
+import path from "node:path";
 import { client, xml } from "@xmpp/client";
 import type { ResolvedXmppAccount } from "./accounts.js";
+import { OmemoManager } from "./omemo/OmemoManager.js";
+import { OmemoStore } from "./omemo/OmemoStore.js";
 import { getXmppRuntime } from "./runtime.js";
 import type { XmppChatState, XmppInboundMessage } from "./types.js";
-import { OmemoStore } from "./omemo/OmemoStore.js";
-import { OmemoManager } from "./omemo/OmemoManager.js";
 
 type XmppClientEventMap = {
   message: XmppInboundMessage;
@@ -125,23 +125,23 @@ export class XmppClient {
 
       if (this.account.omemoEnabled) {
         try {
-           const storeDir = path.join(os.homedir(), ".openclaw");
-           const storePath = path.join(storeDir, `xmpp-omemo-${localPart}.json`);
-           await fs.mkdir(storeDir, { recursive: true });
+          const storeDir = path.join(os.homedir(), ".openclaw");
+          const storePath = path.join(storeDir, `xmpp-omemo-${localPart}.json`);
+          await fs.mkdir(storeDir, { recursive: true });
 
-           this.omemoStore = new OmemoStore(storePath);
-           await this.omemoStore.init();
-           await this.omemoStore.ensureKeys();
-           
-           this.omemoManager = new OmemoManager(xmppClient, this.omemoStore);
-           const deviceId = await this.omemoStore.getLocalRegistrationId();
-           if (deviceId) {
-               await this.omemoManager.publishBundle(deviceId);
-               await this.omemoManager.overwriteDeviceList([deviceId]);
-               runtime.log?.(`[${this.account.accountId}] OMEMO: Enabled. Device ID: ${deviceId}`);
-           }
+          this.omemoStore = new OmemoStore(storePath);
+          await this.omemoStore.init();
+          await this.omemoStore.ensureKeys();
+
+          this.omemoManager = new OmemoManager(xmppClient, this.omemoStore);
+          const deviceId = await this.omemoStore.getLocalRegistrationId();
+          if (deviceId) {
+            await this.omemoManager.publishBundle(deviceId);
+            await this.omemoManager.overwriteDeviceList([deviceId]);
+            runtime.log?.(`[${this.account.accountId}] OMEMO: Enabled. Device ID: ${deviceId}`);
+          }
         } catch (e) {
-           runtime.error?.(`[${this.account.accountId}] OMEMO Init Failed: ${e}`);
+          runtime.error?.(`[${this.account.accountId}] OMEMO Init Failed: ${e}`);
         }
       }
     } catch (err) {
@@ -177,7 +177,7 @@ export class XmppClient {
     const runtime = getXmppRuntime();
     const messageId = this.generateMessageId();
     const children: any[] = [];
-    
+
     const normalizedTo = to.replace(/^xmpp:/i, "").trim();
     const [bareTo] = normalizedTo.split("/");
     const fullTo = normalizedTo;
@@ -185,36 +185,52 @@ export class XmppClient {
     // OMEMO Encryption
     let encryptedElement: any = null;
     if (this.account.omemoEnabled && this.omemoManager && options?.type !== "groupchat") {
-         try {
-             // 1. Fetch devices for recipient
-             // Note: In a real app, we should cache this or use PEP updates
-             const devices = await this.omemoManager.fetchDeviceList(bareTo);
-             
-             if (devices.length > 0) {
-                 const recipients = devices.map(id => ({ jid: bareTo, deviceId: id }));
-                 
-                 // TODO: Add other self devices
-                 
-                 const encryptionResult = await this.omemoManager.encryptMessage(recipients, body);
-                 encryptedElement = await this.omemoManager.constructOmemoElement(encryptionResult);
-                 
-                 runtime.log?.(`[${this.account.accountId}] OMEMO: Encrypted message for ${bareTo} (${devices.length} devices)`);
-             } else {
-                 runtime.log?.(`[${this.account.accountId}] OMEMO: No devices found for ${bareTo}, falling back to plain text.`);
-             }
-         } catch (e) {
-             runtime.error?.(`[${this.account.accountId}] OMEMO Encryption Failed: ${e}`);
-             // Fallback to plain text
-         }
+      try {
+        // 1. Fetch devices for recipient
+        // Note: In a real app, we should cache this or use PEP updates
+        const devices = await this.omemoManager.fetchDeviceList(bareTo);
+
+        if (devices.length > 0) {
+          const recipients = devices.map((id) => ({ jid: bareTo, deviceId: id }));
+
+          // TODO: Add other self devices
+
+          const encryptionResult = await this.omemoManager.encryptMessage(recipients, body);
+          encryptedElement = await this.omemoManager.constructOmemoElement(encryptionResult);
+
+          runtime.log?.(
+            `[${this.account.accountId}] OMEMO: Encrypted message for ${bareTo} (${devices.length} devices)`,
+          );
+        } else {
+          runtime.log?.(
+            `[${this.account.accountId}] OMEMO: No devices found for ${bareTo}, falling back to plain text.`,
+          );
+        }
+      } catch (e) {
+        runtime.error?.(`[${this.account.accountId}] OMEMO Encryption Failed: ${e}`);
+        // Fallback to plain text
+      }
     }
-    
+
     if (encryptedElement) {
-        children.push(encryptedElement);
-        children.push(xml("store", { xmlns: "urn:xmpp:hints" }));
-        children.push(xml("encryption", { xmlns: "urn:xmpp:eme:0", name: "OMEMO", namespace: "eu.siacs.conversations.axolotl" }));
-        children.push(xml("body", {}, "I sent you an OMEMO encrypted message but your client doesn’t seem to support that. Find more information on https://conversations.im/omemo"));
+      children.push(encryptedElement);
+      children.push(xml("store", { xmlns: "urn:xmpp:hints" }));
+      children.push(
+        xml("encryption", {
+          xmlns: "urn:xmpp:eme:0",
+          name: "OMEMO",
+          namespace: "eu.siacs.conversations.axolotl",
+        }),
+      );
+      children.push(
+        xml(
+          "body",
+          {},
+          "I sent you an OMEMO encrypted message but your client doesn’t seem to support that. Find more information on https://conversations.im/omemo",
+        ),
+      );
     } else {
-        children.push(xml("body", {}, body));
+      children.push(xml("body", {}, body));
     }
 
     if (options?.requestReceipt) {
@@ -259,11 +275,19 @@ export class XmppClient {
     );
 
     await this.xmpp.send(stanza);
-    runtime.log?.(
-      `[${this.account.accountId}] xmpp: sent message id=${messageId} to=${fullTo} type=${
-        options?.type ?? "chat"
-      } body=${body.slice(0, 120)}`,
-    );
+    if (!this.account.omemoEnabled) {
+      runtime.log?.(
+        `[${this.account.accountId}] xmpp: sent message id=${messageId} to=${fullTo} type=${
+          options?.type ?? "chat"
+        } body=${body.slice(0, 120)}`,
+      );
+    } else {
+      runtime.log?.(
+        `[${this.account.accountId}] xmpp: sent encrypted message id=${messageId} to=${fullTo} type=${
+          options?.type ?? "chat"
+        }`,
+      );
+    }
     return messageId;
   }
 
@@ -317,43 +341,48 @@ export class XmppClient {
 
     // OMEMO Decryption
     if (this.account.omemoEnabled && this.omemoManager) {
-        const encryptedElement = stanza.getChild("encrypted", "eu.siacs.conversations.axolotl");
-        if (encryptedElement) {
-            encrypted = true;
-            try {
-                const from = stanza.attrs.from ? stanza.attrs.from.split('/')[0] : '';
-                const header = encryptedElement.getChild("header");
-                const sid = parseInt(header.attrs.sid, 10);
-                const iv = header.getChildText("iv");
-                const payload = encryptedElement.getChildText("payload");
-                const keys = header.getChildren("key").map((k: any) => ({
-                    rid: parseInt(k.attrs.rid, 10),
-                    k: k.text(),
-                    preKey: k.attrs.prekey === "true" || k.attrs.prekey === "1"
-                }));
-                
-                const encryptedData = {
-                    header: { sid, iv, keys },
-                    payload
-                };
-                
-                const deviceId = await this.omemoStore!.getLocalRegistrationId();
-                if (deviceId) {
-                    const decrypted = await this.omemoManager.decryptMessage(from, sid, encryptedData, deviceId);
-                    if (decrypted) {
-                        bodyText = decrypted;
-                        const runtime = getXmppRuntime();
-                        runtime.log?.(`[${this.account.accountId}] OMEMO: Decrypted message from ${from}`);
-                    }
-                }
-            } catch (e) {
-                 const runtime = getXmppRuntime();
-                 runtime.error?.(`[${this.account.accountId}] OMEMO Decryption Failed: ${e}`);
-                 bodyText = "[OMEMO Decryption Failed]";
+      const encryptedElement = stanza.getChild("encrypted", "eu.siacs.conversations.axolotl");
+      if (encryptedElement) {
+        encrypted = true;
+        try {
+          const from = stanza.attrs.from ? stanza.attrs.from.split("/")[0] : "";
+          const header = encryptedElement.getChild("header");
+          const sid = parseInt(header.attrs.sid, 10);
+          const iv = header.getChildText("iv");
+          const payload = encryptedElement.getChildText("payload");
+          const keys = header.getChildren("key").map((k: any) => ({
+            rid: parseInt(k.attrs.rid, 10),
+            k: k.text(),
+            preKey: k.attrs.prekey === "true" || k.attrs.prekey === "1",
+          }));
+
+          const encryptedData = {
+            header: { sid, iv, keys },
+            payload,
+          };
+
+          const deviceId = await this.omemoStore!.getLocalRegistrationId();
+          if (deviceId) {
+            const decrypted = await this.omemoManager.decryptMessage(
+              from,
+              sid,
+              encryptedData,
+              deviceId,
+            );
+            if (decrypted) {
+              bodyText = decrypted;
+              const runtime = getXmppRuntime();
+              runtime.log?.(`[${this.account.accountId}] OMEMO: Decrypted message from ${from}`);
             }
+          }
+        } catch (e) {
+          const runtime = getXmppRuntime();
+          runtime.error?.(`[${this.account.accountId}] OMEMO Decryption Failed: ${e}`);
+          bodyText = "[OMEMO Decryption Failed]";
         }
+      }
     }
-    
+
     const oobUrls = this.readOobUrls(stanza);
 
     if ((!bodyText || typeof bodyText !== "string") && oobUrls.length === 0) {
@@ -397,11 +426,19 @@ export class XmppClient {
     };
 
     const runtime = getXmppRuntime();
-    runtime.log?.(
-      `[${this.account.accountId}] xmpp: inbound message id=${messageId} from=${fromJid} to=${toJid} type=${
-        isGroup ? "group" : "direct"
-      } body=${(bodyText ?? "").slice(0, 120)} oob=${oobUrls.length}`,
-    );
+    if (!encrypted) {
+      runtime.log?.(
+        `[${this.account.accountId}] xmpp: inbound message id=${messageId} from=${fromJid} to=${toJid} type=${
+          isGroup ? "group" : "direct"
+        } body=${(bodyText ?? "").slice(0, 120)} oob=${oobUrls.length}`,
+      );
+    } else {
+      runtime.log?.(
+        `[${this.account.accountId}] xmpp: inbound encrypted message id=${messageId} from=${fromJid} to=${toJid} type=${
+          isGroup ? "group" : "direct"
+        } oob=${oobUrls.length}`,
+      );
+    }
 
     this.emit("message", msg);
   }

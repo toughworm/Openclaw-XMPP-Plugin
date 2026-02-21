@@ -70,11 +70,20 @@ echo "[xmpp] Cleaning old xmpp plugin files (if any)..."
 # Remove default extensions directory for xmpp plugin
 rm -rf "$HOME/.openclaw/extensions/xmpp" || true
 
-echo "[xmpp] Downloading xmpp plugin archive to: $ARCHIVE_PATH"
-curl -fsSL "$ARCHIVE_URL" -o "$ARCHIVE_PATH"
+# Determine script directory to find local source
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "[xmpp] Installing xmpp plugin from local archive: $ARCHIVE_PATH"
-"$OPENCLAW_BIN" plugins install "$ARCHIVE_PATH"
+if [ -f "$SCRIPT_DIR/package.json" ]; then
+  echo "[xmpp] Detected local development environment at $SCRIPT_DIR"
+  echo "[xmpp] Installing plugin from local source directory..."
+  "$OPENCLAW_BIN" plugins install "$SCRIPT_DIR"
+else
+  echo "[xmpp] Downloading xmpp plugin archive to: $ARCHIVE_PATH"
+  curl -fsSL "$ARCHIVE_URL" -o "$ARCHIVE_PATH"
+  
+  echo "[xmpp] Installing xmpp plugin from downloaded archive: $ARCHIVE_PATH"
+  "$OPENCLAW_BIN" plugins install "$ARCHIVE_PATH"
+fi
 
 # Restore channels.xmpp subtree if we backed it up earlier
 if [ -f "$BACKUP_PATH" ] && [ -f "$CONFIG_PATH" ]; then
