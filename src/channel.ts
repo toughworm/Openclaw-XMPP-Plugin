@@ -1,14 +1,14 @@
+import { buildChannelConfigSchema } from "openclaw/plugin-sdk/channel-config-schema";
+import { createReplyPrefixOptions } from "openclaw/plugin-sdk/channel-outbound";
+import { DEFAULT_ACCOUNT_ID } from "openclaw/plugin-sdk/account-id";
 import {
-  buildChannelConfigSchema,
-  createReplyPrefixOptions,
-  DEFAULT_ACCOUNT_ID,
   deleteAccountFromConfigSection,
   formatPairingApproveHint,
-  resolveChannelMediaMaxBytes,
   setAccountEnabledInConfigSection,
   type ChannelPlugin,
-  type ChannelStatusIssue,
-} from "openclaw/plugin-sdk";
+} from "openclaw/plugin-sdk/channel-plugin-common";
+import { resolveChannelMediaMaxBytes } from "openclaw/plugin-sdk/media-runtime";
+import { type ChannelStatusIssue } from "openclaw/plugin-sdk/status-helpers";
 import {
   listXmppAccountIds,
   resolveDefaultXmppAccountId,
