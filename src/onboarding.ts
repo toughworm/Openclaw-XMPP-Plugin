@@ -1,11 +1,6 @@
-import {
-  DEFAULT_ACCOUNT_ID,
-  normalizeAccountId,
-  promptAccountId,
-  type ChannelOnboardingAdapter,
-  type OpenClawConfig,
-  type WizardPrompter,
-} from "openclaw/plugin-sdk";
+import { DEFAULT_ACCOUNT_ID, normalizeAccountId, type OpenClawConfig } from "openclaw/plugin-sdk/setup";
+import { promptAccountId } from "openclaw/plugin-sdk/setup";
+import type { WizardPrompter } from "openclaw/plugin-sdk/setup";
 import { listXmppAccountIds, resolveDefaultXmppAccountId, resolveXmppAccount } from "./accounts.js";
 import type { CoreConfig } from "./types.js";
 
@@ -89,6 +84,25 @@ async function promptXmppCredentials(params: {
 
   return nextCore as OpenClawConfig;
 }
+
+// Local type to match the old ChannelOnboardingAdapter API
+// The type was removed from the SDK in v2026.10.3
+type ChannelOnboardingAdapter = {
+  channel: string;
+  getStatus: (params: { cfg: OpenClawConfig }) => Promise<{
+    channel: string;
+    configured: boolean;
+    statusLines: string[];
+    selectionHint: string;
+    quickstartScore: number;
+  }>;
+  configure: (params: {
+    cfg: OpenClawConfig;
+    prompter: WizardPrompter;
+    accountOverrides: Record<string, string | undefined>;
+    shouldPromptAccountIds: boolean;
+  }) => Promise<{ cfg: OpenClawConfig; accountId: string }>;
+};
 
 export const xmppOnboardingAdapter: ChannelOnboardingAdapter = {
   channel,
